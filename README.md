@@ -1,15 +1,19 @@
 # DoS Attack Detection using Kolmogorov-Arnold Networks (KAN)
 
 ## Overview
+
 Implementation of an advanced Intrusion Detection System (IDS) for IoT using Kolmogorov-Arnold Networks. The system is designed to detect Denial of Service (DoS) attacks with high accuracy while maintaining minimal computational overhead.
 
 ## Key Features
+
 - Lightweight architecture (50K parameters, 0.19 MB)
 - High detection accuracy (92%)
 - Fast inference (2.00ms per sample)
 - Resource-efficient design suitable for IoT/edge devices
 
 ## Project Structure
+
+```markdown
 /
 ├── data/                      # Dataset directory
 │   └── Wednesday-workingHours.pcap_ISCX.csv    # CICIDS2017 dataset
@@ -40,6 +44,7 @@ Implementation of an advanced Intrusion Detection System (IDS) for IoT using Kol
 │   └── feature_analysis.py  # Feature importance analysis
 │
 └── requirements.txt          # Project dependencies
+```
 
 ## Installation
 
@@ -72,6 +77,7 @@ python src/analyze.py
 ```bash
 python src/feature_analysis.py
 ```
+
 ## Results
 
 ### Performance Metrics
@@ -125,24 +131,26 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
 ## Citation
 
 If you use this work in your research, please cite:
 
+```bibtex
 @article{kuznetsov2025dos,
   title={DoS Attack Detection in IoT using Kolmogorov-Arnold Networks},
   author={Kuznetsov, Oleksandr},
   year={2025}
 }
+```
 
 ## Contact
 
-Oleksandr Kuznetsov - oleksandr.o.kuznetsov@gmail.com
-Project Link: https://github.com/KuznetsovKarazin/kan-dos-detection
+- Oleksandr Kuznetsov - oleksandr.o.kuznetsov@gmail.com
+- Project Link: https://github.com/KuznetsovKarazin/kan-dos-detection
 
 ## Acknowledgments
 
-Canadian Institute for Cybersecurity for the CICIDS2017 dataset
-KAN implementation based on pykan
+- Canadian Institute for Cybersecurity for the CICIDS2017 dataset
+- KAN implementation based on pykan
