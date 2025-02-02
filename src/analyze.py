@@ -235,7 +235,7 @@ def generate_analysis_report(metrics, optimal_thresholds, network_info, save_dir
 - Precision: {metrics['precision']:.3f}
 - Recall: {metrics['recall']:.3f}
 - F1-Score: {metrics['f1_score']:.3f}
-- AUC-ROC: 0.977
+
 
 ## Model Characteristics
 - Total Parameters: {metrics['total_params']:,}
@@ -256,12 +256,12 @@ def generate_analysis_report(metrics, optimal_thresholds, network_info, save_dir
    - Single output neuron for binary classification
 
 2. Performance:
-   - High accuracy (90%) with balanced precision/recall
-   - Excellent AUC-ROC (0.977)
-   - Fast inference (1.26ms per sample)
+   - High accuracy with balanced precision/recall
+   - Excellent AUC-ROC 
+   - Fast inference 
 
 3. Resource Efficiency:
-   - Small model size (0.19 MB)
+   - Small model size 
    - Efficient parameter usage ({metrics['trainable_params']:,} trainable parameters)
    - Suitable for edge deployment
 
