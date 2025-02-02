@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+
+# Project specific
+data/*.csv
+experiment_data/*.pt
+experiment_data/*.pkl
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+.DS_Store
