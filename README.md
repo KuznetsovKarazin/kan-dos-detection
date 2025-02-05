@@ -7,7 +7,7 @@ Implementation of an advanced Intrusion Detection System (IDS) for IoT using Kol
 ## Key Features
 
 - Lightweight architecture (50K parameters, 0.19 MB)
-- High detection accuracy (92%)
+- High detection accuracy (99%)
 - Fast inference (2.00ms per sample)
 - Resource-efficient design suitable for IoT/edge devices
 
