@@ -138,11 +138,7 @@ This project is licensed under the MIT License.
 If you use this work in your research, please cite:
 
 ```bibtex
-@article{kuznetsov2025dos,
-  title={DoS Attack Detection in IoT using Kolmogorov-Arnold Networks},
-  author={Kuznetsov, Oleksandr},
-  year={2025}
-}
+@article{Kuznetsov_2025, title={Efficient Denial of Service Attack Detection in IoT using Kolmogorov-Arnold Networks}, url={http://arxiv.org/abs/2502.01835}, DOI={10.48550/arXiv.2502.01835}, note={arXiv:2502.01835 [cs]}, number={arXiv:2502.01835}, publisher={arXiv}, author={Kuznetsov, Oleksandr}, year={2025}, month=feb }
 ```
 
 ## Contact
@@ -152,5 +148,5 @@ If you use this work in your research, please cite:
 
 ## Acknowledgments
 
-- Canadian Institute for Cybersecurity for the CICIDS2017 dataset
-- KAN implementation based on pykan
+- Canadian Institute for Cybersecurity for the CICIDS2017 dataset (https://www.unb.ca/cic/datasets/ids-2017.html)
+- KAN implementation based on pykan (https://github.com/KindXiaoming/pykan)

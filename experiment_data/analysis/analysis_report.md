@@ -12,7 +12,6 @@
 - Precision: 0.984
 - Recall: 0.996
 - F1-Score: 0.990
-- AUC-ROC: 0.977
 
 ## Model Characteristics
 - Total Parameters: 50,092
@@ -33,12 +32,12 @@
    - Single output neuron for binary classification
 
 2. Performance:
-   - High accuracy (90%) with balanced precision/recall
-   - Excellent AUC-ROC (0.977)
-   - Fast inference (1.26ms per sample)
+   - High accuracy with balanced precision/recall
+   - Excellent AUC-ROC 
+   - Fast inference 
 
 3. Resource Efficiency:
-   - Small model size (0.19 MB)
+   - Small model size 
    - Efficient parameter usage (42,336 trainable parameters)
    - Suitable for edge deployment
 
