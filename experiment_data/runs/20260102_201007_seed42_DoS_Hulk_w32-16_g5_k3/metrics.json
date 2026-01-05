@@ -1,0 +1,42 @@
+{
+  "run_dir": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3",
+  "timestamp": "2026-01-02T23:51:04.115300",
+  "threshold": 0.5,
+  "metrics": {
+    "accuracy": 0.9899491507086444,
+    "precision": 0.9843629673996749,
+    "recall": 0.9957156767283349,
+    "f1": 0.9900067768897304
+  },
+  "timing": {
+    "ms_per_iter": 410.4295085009653,
+    "ms_per_sample": 1.6032402675818958,
+    "batch_size": 256,
+    "iters": 200
+  },
+  "model": {
+    "width": [
+      [
+        78,
+        0
+      ],
+      [
+        32,
+        0
+      ],
+      [
+        16,
+        0
+      ],
+      [
+        1,
+        0
+      ]
+    ],
+    "grid": 5,
+    "k": 3,
+    "total_params": 50092,
+    "trainable_params": 42336,
+    "param_bytes": 200368
+  }
+}

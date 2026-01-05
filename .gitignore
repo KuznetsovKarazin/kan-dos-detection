@@ -7,6 +7,11 @@ venv/
 data/*.csv
 experiment_data/*.pt
 experiment_data/*.pkl
+experiment_data/**/*.pt
+
+# binary artifacts
+*.pt
+*.npz
 
 # IDE
 .vscode/

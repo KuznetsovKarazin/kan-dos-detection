@@ -1,0 +1,8 @@
+Network Architecture Analysis
+============================
+
+Input dimension: [78, 0]
+Hidden layers: [[32, 0], [16, 0]]
+Output dimension: [1, 0]
+Grid points: 5
+Spline degree: 3

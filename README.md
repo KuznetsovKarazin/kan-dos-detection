@@ -2,144 +2,218 @@
 
 ## Overview
 
-Implementation of an advanced Intrusion Detection System (IDS) for IoT using Kolmogorov-Arnold Networks. The system is designed to detect Denial of Service (DoS) attacks with high accuracy while maintaining minimal computational overhead.
+This repository implements an Intrusion Detection System (IDS) for IoT based on Kolmogorov-Arnold Networks (KAN). The goal is accurate Denial of Service (DoS) detection with low computational overhead, targeting CPU/edge deployments.
+
+In addition to the baseline PyKAN/PyTorch inference, the repository includes an optional LUT-KAN (v2) pipeline that compiles KAN spline components into segment-wise lookup tables (LUTs) and evaluates them with NumPy or Numba backends.
 
 ## Key Features
 
-- Lightweight architecture (50K parameters, 0.19 MB)
-- High detection accuracy (99%)
-- Fast inference (2.00ms per sample)
-- Resource-efficient design suitable for IoT/edge devices
+Baseline IDS (KAN):
+- Lightweight KAN architecture (≈50K parameters; small float model footprint)
+- High detection accuracy on CICIDS2017 DoS traffic (see Results)
+- Training, evaluation, and feature analysis scripts
+
+LUT-KAN (v2) acceleration:
+- LUT compilation from a trained KAN run directory
+- Two execution backends for LUT inference:
+  - NumPy vectorized evaluation
+  - Numba JIT evaluation (fast CPU inference)
+- Unified evaluation report (quality + latency + memory) written as JSON for reproducible tables/plots
 
 ## Project Structure
 
-```markdown
+```text
 /
-├── data/                      # Dataset directory
-│   └── Wednesday-workingHours.pcap_ISCX.csv    # CICIDS2017 dataset
+├── data/                              # Dataset directory (not committed)
+│   └── Wednesday-workingHours.pcap_ISCX.csv
 │
-├── experiment_data/           # Experimental results
-│   ├── analysis/             # Analysis results
-│   │   ├── feature_analysis_report.md
-│   │   ├── feature_correlations.png
-│   │   ├── correlation_heatmap.png
-│   │   └── feature_statistics.csv
-│   ├── figures/              # Training visualizations
-│   │   ├── attack_distribution.png
-│   │   └── training_curves.png
-│   └── model/               # Saved models and checkpoints
+├── experiment_data/                   # Default output directory
+│   ├── figures/                       # Training/evaluation figures
+│   ├── analysis/                      # Feature analysis artifacts (optional)
+│   └── runs/                          # Recommended: per-run directories (v2)
+│       └── <RUN_ID>/                  # e.g., 20260102_165326_seed42_DoS_Hulk_w32-16_g5_k3
+│           ├── dataset.pt
+│           ├── trained_model.pt
+│           ├── metrics.json           # baseline (float) metrics (optional)
+│           └── lut/
+│               └── <LUT_ID>/          # e.g., L64_sym_int8
+│                   ├── layer*.npz
+│                   ├── manifest.json
+│                   └── lut_report_unified.json
 │
-├── figures/                  # KAN Visualization Files
-│   ├── sp_0__.png         # Layer 0 spline visualizations
-│   ├── sp_1__.png         # Layer 1 spline visualizations
-│   └── sp_2__.png         # Layer 2 spline visualizations
-│       # Format: sp_X_Y_Z.png where:
-│       # X - layer index
-│       # Y - neuron index
-│       # Z - spline index
+├── figures/                           # KAN visualization files (optional)
+│   ├── sp_0_*.png
+│   ├── sp_1_*.png
+│   └── sp_2_*.png
 │
-├── src/                      # Source code
-│   ├── train.py             # Training pipeline
-│   ├── analyze.py           # Performance analysis
-│   └── feature_analysis.py  # Feature importance analysis
+├── src/
+│   ├── train.py                       # Baseline training pipeline
+│   ├── analyze.py                     # Baseline performance analysis
+│   ├── feature_analysis.py            # Baseline feature analysis
+│   └── lut_v2/                        # LUT-KAN (v2) pipeline
+│       ├── build_lut.py               # Build LUT artifacts for a trained model
+│       ├── evaluate_lut.py            # Unified eval: quality + speed + memory
+│       └── sweep_lut.py               # Optional: run multiple LUT configs
 │
-└── requirements.txt          # Project dependencies
+└── requirements.txt
 ```
+
+Notes:
+- Large artifacts (dataset CSV, trained models, LUT .npz files) should not be committed to git. Use per-run directories and/or GitHub Releases for reproducibility bundles.
 
 ## Installation
 
-1. Clone the repository:
+1) Clone the repository:
 ```bash
 git clone https://github.com/KuznetsovKarazin/kan-dos-detection.git
 cd kan-dos-detection
 ```
-2. Create and activate virtual environment:
+
+2) Create and activate a virtual environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Linux/macOS:
+source venv/bin/activate
+# Windows (PowerShell):
+venv\Scripts\Activate.ps1
 ```
-3. Install dependencies:
+
+3) Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-## Usage
+Optional (recommended for LUT speed):
+```bash
+pip install numba
+```
 
-1. Train the model:
+## Dataset
+
+This project uses the CICIDS2017 dataset (Wednesday traffic). Download it from the official source and place the CSV here:
+
+```text
+data/Wednesday-workingHours.pcap_ISCX.csv
+```
+
+Dataset reference: CIC (Canadian Institute for Cybersecurity) IDS 2017.
+
+## Baseline Usage (PyKAN/PyTorch)
+
+1) Train the KAN model:
 ```bash
 python src/train.py
 ```
-2. Analyze model performance:
+
+2) Analyze model performance:
 ```bash
 python src/analyze.py
 ```
-3. Analyze feature importance:
+
+3) Analyze feature importance:
 ```bash
 python src/feature_analysis.py
 ```
 
-## Results
+Outputs are written under `experiment_data/` by default. If you prefer per-run directories, create a run folder and adjust the save path (or wrap the scripts with a small runner).
 
-### Performance Metrics
+## LUT-KAN (v2): Build and Evaluate LUT Inference
 
+The LUT pipeline operates on a "run directory" that contains:
+- `dataset.pt`
+- `trained_model.pt`
+Optionally:
+- `metrics.json` (baseline float timing/metrics)
+
+You can use either:
+- `--run-dir experiment_data` (if your baseline scripts save there), or
+- `--run-dir experiment_data/runs/<RUN_ID>` (recommended, cleaner for sweeps).
+
+### Step A: Build LUT artifacts
+
+Example: build L=64, symmetric int8, linear interpolation, closed boundary, clip_x OOB policy.
+
+```bash
+python -m src.lut_v2.build_lut   --run-dir experiment_data/runs/<RUN_ID>   --out experiment_data/runs/<RUN_ID>/lut/L64_sym_int8   --L 64   --value-repr spline_component   --scheme symmetric --dtype int8   --interp linear   --boundary-mode closed   --oob-policy clip_x   --calib-split train --num-samples 4096   --device cpu
+```
+
+This writes:
+- per-layer LUT artifacts (`layer*.npz`)
+- `manifest.json` describing the LUT configuration
+
+### Step B: Evaluate LUT (unified report)
+
+Run a single command to compute:
+- quality: float vs LUT (NumPy and, if installed, Numba)
+- latency: infer-only (comparable) + end-to-end (prepare+infer)
+- memory: float model footprint vs LUT artifacts (total and per layer)
+
+```bash
+python -m src.lut_v2.evaluate_lut   --run-dir experiment_data/runs/<RUN_ID>   --lut-dir experiment_data/runs/<RUN_ID>/lut/L64_sym_int8   --device cpu   --threads-torch 1   --threads-numba 1   --batch-size 256   --warmup-iters 50   --measure-iters 200   --threshold 0.5
+```
+
+Output:
+- `experiment_data/runs/<RUN_ID>/lut/L64_sym_int8/lut_report_unified.json`
+
+Interpretation guide:
+- `timing.infer_only.*` measures pure forward execution (best for fair comparisons)
+- `timing.end2end.*` includes packing/adapter preparation inside the timed loop (useful for deployment budgeting; slower by design)
+
+### Optional: LUT sweeps
+
+If you want to run multiple LUT configurations (L, scheme/dtype, OOB/boundary modes), use `src/lut_v2/sweep_lut.py` or generate YAML/CLI lists and iterate. A common sweep:
+- L ∈ {16, 32, 64, 128}
+- scheme/dtype: symmetric int8 vs asymmetric uint8
+- boundary_mode ∈ {closed, half_open}
+- oob_policy ∈ {clip_x, zero_spline}
+
+After the sweep, aggregate `lut_report_unified.json` files into tables (mean/std over seeds). A dedicated `collect_results.py` is recommended for paper-ready tables.
+
+## Results (baseline)
+
+Example (typical) performance metrics:
 - Accuracy: 0.990
 - Precision: 0.984
 - Recall: 0.996
 - F1-Score: 0.990
 
-### Resource Requirements
+Resource summary (baseline float model):
+- Total Parameters: ~50K
+- Model size: ~0.19 MB (float)
 
-- Total Parameters: 50,092
-- Trainable Parameters: 42,336
-- Model Size: 0.19 MB
-- Average Inference Time: 2.00 ms per sample
+Note: LUT-KAN changes the memory/latency trade-off: LUT artifacts are typically larger than float parameters, but can substantially reduce infer-only latency on CPU.
 
-### KAN Visualizations
-The `figures/` directory contains detailed visualizations of the KAN network's internal structure:
-- Spline visualizations for each layer (sp_X_Y_Z.png)
-  - Layer 0: Input processing splines
-  - Layer 1: Hidden layer feature transformations
-  - Layer 2: Output layer decision boundaries
-- Each visualization shows how individual neurons process and transform input features
-- File naming convention: sp_X_Y_Z.png
-  - X: Layer index
-  - Y: Neuron index in the layer
-  - Z: Individual spline index for the neuron
+## Hardware / Experimental Setup (paper reference)
 
-## Data
+Example setup used for experiments:
+- CPU: AMD Ryzen 7 7840HS (3.80 GHz)
+- RAM: 64 GB
+- OS: Windows
 
-The project uses the CICIDS2017 dataset, focusing on Wednesday's traffic which contains various DoS attack types:
-
-- DoS Hulk (231,073 samples)
-- DoS GoldenEye (10,293 samples)
-- DoS slowloris (5,796 samples)
-- DoS Slowhttptest (5,499 samples)
-- Heartbleed (11 samples)
-
-## Model Architecture
-
-- Input Layer: 78 features
-- Hidden Layers: [32, 16]
-- Output Layer: Binary classification
-- Architecture: Kolmogorov-Arnold Network
-- Spline Degree: 3
-- Grid Points: 5
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License.
+When reporting speed, specify:
+- backend (float PyTorch vs LUT NumPy vs LUT Numba)
+- whether timing is infer-only or end-to-end
+- batch size, warmup/iters, and thread settings
 
 ## Citation
 
 If you use this work in your research, please cite:
 
 ```bibtex
-@article{Kuznetsov_2025, title={Efficient Denial of Service Attack Detection in IoT using Kolmogorov-Arnold Networks}, url={http://arxiv.org/abs/2502.01835}, DOI={10.48550/arXiv.2502.01835}, note={arXiv:2502.01835 [cs]}, number={arXiv:2502.01835}, publisher={arXiv}, author={Kuznetsov, Oleksandr}, year={2025}, month=feb }
+@article{Kuznetsov_2025,
+  title   = {Efficient Denial of Service Attack Detection in IoT using Kolmogorov-Arnold Networks},
+  url     = {http://arxiv.org/abs/2502.01835},
+  doi     = {10.48550/arXiv.2502.01835},
+  note    = {arXiv:2502.01835 [cs]},
+  author  = {Kuznetsov, Oleksandr},
+  year    = {2025},
+  month   = feb
+}
 ```
+
+## License
+
+This project is licensed under the MIT License.
 
 ## Contact
 
@@ -148,5 +222,9 @@ If you use this work in your research, please cite:
 
 ## Acknowledgments
 
-- Canadian Institute for Cybersecurity for the CICIDS2017 dataset (https://www.unb.ca/cic/datasets/ids-2017.html)
-- KAN implementation based on pykan (https://github.com/KindXiaoming/pykan)
+- Canadian Institute for Cybersecurity for the CICIDS2017 dataset: https://www.unb.ca/cic/datasets/ids-2017.html
+- KAN implementation based on pykan: https://github.com/KindXiaoming/pykan
+
+LUT-KAN (v2) pipeline notes:
+- The LUT compilation/evaluation approach follows the LUT-KAN research codebase (segment-wise LUT compilation and CPU-oriented inference).
+- If you maintain a separate LUT-KAN repository for the paper, reference it here and keep the API alignment to avoid duplicated implementations.
