@@ -225,6 +225,3 @@ This project is licensed under the MIT License.
 - Canadian Institute for Cybersecurity for the CICIDS2017 dataset: https://www.unb.ca/cic/datasets/ids-2017.html
 - KAN implementation based on pykan: https://github.com/KindXiaoming/pykan
 
-LUT-KAN (v2) pipeline notes:
-- The LUT compilation/evaluation approach follows the LUT-KAN research codebase (segment-wise LUT compilation and CPU-oriented inference).
-- If you maintain a separate LUT-KAN repository for the paper, reference it here and keep the API alignment to avoid duplicated implementations.

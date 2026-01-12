@@ -1,0 +1,39 @@
+{
+  "run_dir": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3",
+  "L": 128,
+  "value_repr": "spline_component",
+  "scheme": "symmetric",
+  "dtype": "int8",
+  "interp": "linear",
+  "boundary_mode": "half_open",
+  "oob_policy": "zero_spline",
+  "calibration": {
+    "split": "train",
+    "num_samples": 4096,
+    "seed": 4
+  },
+  "device": "cpu",
+  "layers": [
+    {
+      "layer_idx": 0,
+      "path": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3\\lut_sweeps_v2\\seed4_L128_symmetric_int8_linear_half_open_zero_spline_spline_component\\layer0_L128_symmetric_int8_linear_half_open_zero_spline_spline_component.npz",
+      "in_dim": 78,
+      "out_dim": 32,
+      "bytes_total": 3654192
+    },
+    {
+      "layer_idx": 1,
+      "path": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3\\lut_sweeps_v2\\seed4_L128_symmetric_int8_linear_half_open_zero_spline_spline_component\\layer1_L128_symmetric_int8_linear_half_open_zero_spline_spline_component.npz",
+      "in_dim": 32,
+      "out_dim": 16,
+      "bytes_total": 749616
+    },
+    {
+      "layer_idx": 2,
+      "path": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3\\lut_sweeps_v2\\seed4_L128_symmetric_int8_linear_half_open_zero_spline_spline_component\\layer2_L128_symmetric_int8_linear_half_open_zero_spline_spline_component.npz",
+      "in_dim": 16,
+      "out_dim": 1,
+      "bytes_total": 23472
+    }
+  ]
+}

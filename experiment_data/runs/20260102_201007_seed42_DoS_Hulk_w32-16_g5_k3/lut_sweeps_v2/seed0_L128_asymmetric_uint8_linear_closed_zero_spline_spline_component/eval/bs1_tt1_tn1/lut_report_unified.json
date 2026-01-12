@@ -1,0 +1,225 @@
+{
+  "task": "kan_dos_detection_lut_eval_unified",
+  "run_dir": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3",
+  "lut_dir": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3\\lut_sweeps_v2\\seed0_L128_asymmetric_uint8_linear_closed_zero_spline_spline_component",
+  "device": "cpu",
+  "threads": {
+    "torch": 1,
+    "numba": 1,
+    "numba_available": true
+  },
+  "threshold": 0.5,
+  "split": "test",
+  "lut_config": {
+    "L": 128,
+    "scheme": "asymmetric",
+    "dtype": "uint8",
+    "interp": "linear",
+    "boundary_mode": "closed",
+    "oob_policy": "zero_spline",
+    "value_repr": "spline_component",
+    "calibration": {
+      "split": "train",
+      "num_samples": 4096,
+      "seed": 0
+    }
+  },
+  "quality": {
+    "float": {
+      "accuracy": 0.9899491507086444,
+      "precision": 0.9843629673996749,
+      "recall": 0.9957156767283349,
+      "f1": 0.9900067768897304,
+      "roc_auc": 0.9991061054136088,
+      "pr_auc": 0.9990538477962826,
+      "confusion": {
+        "tp": 46017,
+        "tn": 45484,
+        "fp": 731,
+        "fn": 198
+      }
+    },
+    "lut_numpy": {
+      "accuracy": 0.9898734177215189,
+      "precision": 0.9842155919153032,
+      "recall": 0.9957156767283349,
+      "f1": 0.9899322362052275,
+      "roc_auc": 0.9991032231566498,
+      "pr_auc": 0.9990505396587218,
+      "confusion": {
+        "tp": 46017,
+        "tn": 45477,
+        "fp": 738,
+        "fn": 198
+      }
+    },
+    "lut_numba": {
+      "accuracy": 0.9898734177215189,
+      "precision": 0.9842155919153032,
+      "recall": 0.9957156767283349,
+      "f1": 0.9899322362052275,
+      "roc_auc": 0.9991032231566499,
+      "pr_auc": 0.9990505396514948,
+      "confusion": {
+        "tp": 46017,
+        "tn": 45477,
+        "fp": 738,
+        "fn": 198
+      }
+    },
+    "float_metrics_reference_file": {
+      "run_dir": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3",
+      "timestamp": "2026-01-02T23:51:04.115300",
+      "threshold": 0.5,
+      "metrics": {
+        "accuracy": 0.9899491507086444,
+        "precision": 0.9843629673996749,
+        "recall": 0.9957156767283349,
+        "f1": 0.9900067768897304
+      },
+      "timing": {
+        "ms_per_iter": 410.4295085009653,
+        "ms_per_sample": 1.6032402675818958,
+        "batch_size": 256,
+        "iters": 200
+      },
+      "model": {
+        "width": [
+          [
+            78,
+            0
+          ],
+          [
+            32,
+            0
+          ],
+          [
+            16,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ],
+        "grid": 5,
+        "k": 3,
+        "total_params": 50092,
+        "trainable_params": 42336,
+        "param_bytes": 200368
+      }
+    }
+  },
+  "timing": {
+    "infer_only": {
+      "float_pytorch": {
+        "per_iter_ms": 147.85598659981042,
+        "ms_per_sample": 147.85598659981042,
+        "iters": 500.0,
+        "batch_size": 1.0,
+        "total_s": 73.92799329990521
+      },
+      "lut_numpy_packed": {
+        "per_iter_ms": 7.48940119985491,
+        "ms_per_sample": 7.48940119985491,
+        "iters": 500.0,
+        "batch_size": 1.0,
+        "total_s": 3.744700599927455
+      },
+      "lut_numba_packed": {
+        "per_iter_ms": 0.02715360000729561,
+        "ms_per_sample": 0.02715360000729561,
+        "iters": 500.0,
+        "batch_size": 1.0,
+        "total_s": 0.013576800003647804
+      }
+    },
+    "end2end": {
+      "lut_numpy_prepare_plus_infer": {
+        "per_iter_ms": 179.319055005908,
+        "ms_per_sample": 179.319055005908,
+        "iters": 20.0,
+        "batch_size": 1.0,
+        "total_s": 3.5863811001181602
+      },
+      "lut_numba_prepare_plus_infer": {
+        "per_iter_ms": 179.6931100077927,
+        "ms_per_sample": 179.6931100077927,
+        "iters": 20.0,
+        "batch_size": 1.0,
+        "total_s": 3.5938622001558542
+      },
+      "note": "end2end includes packing/adapter extraction each iteration; measured with fewer iters."
+    }
+  },
+  "memory": {
+    "float_model": {
+      "params_bytes": 200368,
+      "buffers_bytes": 0,
+      "total_bytes": 200368,
+      "params_count": 50092,
+      "buffers_count": 0
+    },
+    "lut_total_bytes": 4390992,
+    "lut_breakdown_total": {
+      "knots_bytes": 144,
+      "q_table_bytes": 4257792,
+      "scale_bytes": 66528,
+      "y_min_bytes": 66528
+    },
+    "lut_layers": [
+      {
+        "layer_idx": 0,
+        "artifact": "layer0_L128_asymmetric_uint8_linear_closed_zero_spline_spline_component.npz",
+        "lut_total_bytes": 3624240,
+        "breakdown": {
+          "knots_bytes": 48,
+          "q_table_bytes": 3514368,
+          "scale_bytes": 54912,
+          "y_min_bytes": 54912
+        }
+      },
+      {
+        "layer_idx": 1,
+        "artifact": "layer1_L128_asymmetric_uint8_linear_closed_zero_spline_spline_component.npz",
+        "lut_total_bytes": 743472,
+        "breakdown": {
+          "knots_bytes": 48,
+          "q_table_bytes": 720896,
+          "scale_bytes": 11264,
+          "y_min_bytes": 11264
+        }
+      },
+      {
+        "layer_idx": 2,
+        "artifact": "layer2_L128_asymmetric_uint8_linear_closed_zero_spline_spline_component.npz",
+        "lut_total_bytes": 23280,
+        "breakdown": {
+          "knots_bytes": 48,
+          "q_table_bytes": 22528,
+          "scale_bytes": 352,
+          "y_min_bytes": 352
+        }
+      }
+    ]
+  },
+  "sweep": {
+    "tag": "seed0_L128_asymmetric_uint8_linear_closed_zero_spline_spline_component",
+    "seed": 0,
+    "L": 128,
+    "scheme": "asymmetric",
+    "dtype": "uint8",
+    "interp": "linear",
+    "boundary_mode": "closed",
+    "oob_policy": "zero_spline",
+    "value_repr": "spline_component",
+    "batch_size": 1,
+    "threads_torch": 1,
+    "threads_numba": 1,
+    "warmup_it": 100,
+    "measure_it": 500
+  },
+  "notes": [
+    "float_metrics_reference_file.timing.batch_size=256 differs from current eval batch_size=1. Use timing.infer_only.float_pytorch for this eval."
+  ]
+}

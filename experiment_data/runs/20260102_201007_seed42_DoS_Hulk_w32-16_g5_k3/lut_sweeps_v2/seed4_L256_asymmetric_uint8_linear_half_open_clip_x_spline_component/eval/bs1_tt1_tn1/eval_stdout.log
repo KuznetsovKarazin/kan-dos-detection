@@ -1,0 +1,74 @@
+E:\kan-dos-detection\venv\Lib\site-packages\kan\MultKAN.py:816: UserWarning: std(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\ReduceOps.cpp:1831.)
+  self.subnode_actscale.append(torch.std(x, dim=0).detach())
+E:\kan-dos-detection\venv\Lib\site-packages\kan\MultKAN.py:826: UserWarning: std(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\ReduceOps.cpp:1831.)
+  input_range = torch.std(preacts, dim=0) + 0.1
+E:\kan-dos-detection\venv\Lib\site-packages\kan\MultKAN.py:827: UserWarning: std(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\ReduceOps.cpp:1831.)
+  output_range_spline = torch.std(postacts_numerical, dim=0) # for training, only penalize the spline part
+E:\kan-dos-detection\venv\Lib\site-packages\kan\MultKAN.py:828: UserWarning: std(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\ReduceOps.cpp:1831.)
+  output_range = torch.std(postacts, dim=0) # for visualization, include the contribution from both spline + symbolic
+checkpoint directory created: ./model
+saving model version 0.0
+[OK] Saved: experiment_data\runs\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3\lut_sweeps_v2\seed4_L256_asymmetric_uint8_linear_half_open_clip_x_spline_component\lut_report_unified.json
+[QUALITY] float: {
+  "accuracy": 0.9899491507086444,
+  "precision": 0.9843629673996749,
+  "recall": 0.9957156767283349,
+  "f1": 0.9900067768897304,
+  "roc_auc": 0.9991061054136088,
+  "pr_auc": 0.9990538477962826,
+  "confusion": {
+    "tp": 46017,
+    "tn": 45484,
+    "fp": 731,
+    "fn": 198
+  }
+}
+[QUALITY] lut_numpy: {
+  "accuracy": 0.9899058747160013,
+  "precision": 0.9842787474332649,
+  "recall": 0.9957156767283349,
+  "f1": 0.989964180838362,
+  "roc_auc": 0.9991046020141456,
+  "pr_auc": 0.9990520478124402,
+  "confusion": {
+    "tp": 46017,
+    "tn": 45480,
+    "fp": 735,
+    "fn": 198
+  }
+}
+[QUALITY] lut_numba: {
+  "accuracy": 0.9899058747160013,
+  "precision": 0.9842787474332649,
+  "recall": 0.9957156767283349,
+  "f1": 0.989964180838362,
+  "roc_auc": 0.9991046001413341,
+  "pr_auc": 0.9990520439079206,
+  "confusion": {
+    "tp": 46017,
+    "tn": 45480,
+    "fp": 735,
+    "fn": 198
+  }
+}
+[TIMING infer-only] float_pytorch: {
+  "per_iter_ms": 213.76797579973936,
+  "ms_per_sample": 213.76797579973936,
+  "iters": 500.0,
+  "batch_size": 1.0,
+  "total_s": 106.88398789986968
+}
+[TIMING infer-only] lut_numpy_packed: {
+  "per_iter_ms": 9.97429919987917,
+  "ms_per_sample": 9.97429919987917,
+  "iters": 500.0,
+  "batch_size": 1.0,
+  "total_s": 4.987149599939585
+}
+[TIMING infer-only] lut_numba_packed: {
+  "per_iter_ms": 0.037855399772524834,
+  "ms_per_sample": 0.037855399772524834,
+  "iters": 500.0,
+  "batch_size": 1.0,
+  "total_s": 0.018927699886262417
+}

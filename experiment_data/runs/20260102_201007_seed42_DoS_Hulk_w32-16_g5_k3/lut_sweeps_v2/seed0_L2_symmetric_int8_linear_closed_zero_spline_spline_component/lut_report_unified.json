@@ -1,0 +1,206 @@
+{
+  "task": "kan_dos_detection_lut_eval_unified",
+  "run_dir": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3",
+  "lut_dir": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3\\lut_sweeps_v2\\seed0_L2_symmetric_int8_linear_closed_zero_spline_spline_component",
+  "device": "cpu",
+  "threads": {
+    "torch": 1,
+    "numba": 1,
+    "numba_available": true
+  },
+  "threshold": 0.5,
+  "split": "test",
+  "lut_config": {
+    "L": 2,
+    "scheme": "symmetric",
+    "dtype": "int8",
+    "interp": "linear",
+    "boundary_mode": "closed",
+    "oob_policy": "zero_spline",
+    "value_repr": "spline_component",
+    "calibration": {
+      "split": "train",
+      "num_samples": 4096,
+      "seed": 0
+    }
+  },
+  "quality": {
+    "float": {
+      "accuracy": 0.9899491507086444,
+      "precision": 0.9843629673996749,
+      "recall": 0.9957156767283349,
+      "f1": 0.9900067768897304,
+      "roc_auc": 0.9991061054136088,
+      "pr_auc": 0.9990538477962826,
+      "confusion": {
+        "tp": 46017,
+        "tn": 45484,
+        "fp": 731,
+        "fn": 198
+      }
+    },
+    "lut_numpy": {
+      "accuracy": 0.9872660391647733,
+      "precision": 0.9764715839363548,
+      "recall": 0.9985935302390999,
+      "f1": 0.9874086673727227,
+      "roc_auc": 0.9987830051576411,
+      "pr_auc": 0.9986822759064673,
+      "confusion": {
+        "tp": 46150,
+        "tn": 45103,
+        "fp": 1112,
+        "fn": 65
+      }
+    },
+    "lut_numba": {
+      "accuracy": 0.9872660391647733,
+      "precision": 0.9764715839363548,
+      "recall": 0.9985935302390999,
+      "f1": 0.9874086673727227,
+      "roc_auc": 0.998783005157641,
+      "pr_auc": 0.9986822748768288,
+      "confusion": {
+        "tp": 46150,
+        "tn": 45103,
+        "fp": 1112,
+        "fn": 65
+      }
+    },
+    "float_metrics_reference_file": {
+      "run_dir": "experiment_data\\runs\\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3",
+      "timestamp": "2026-01-02T23:51:04.115300",
+      "threshold": 0.5,
+      "metrics": {
+        "accuracy": 0.9899491507086444,
+        "precision": 0.9843629673996749,
+        "recall": 0.9957156767283349,
+        "f1": 0.9900067768897304
+      },
+      "timing": {
+        "ms_per_iter": 410.4295085009653,
+        "ms_per_sample": 1.6032402675818958,
+        "batch_size": 256,
+        "iters": 200
+      },
+      "model": {
+        "width": [
+          [
+            78,
+            0
+          ],
+          [
+            32,
+            0
+          ],
+          [
+            16,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ],
+        "grid": 5,
+        "k": 3,
+        "total_params": 50092,
+        "trainable_params": 42336,
+        "param_bytes": 200368
+      }
+    }
+  },
+  "timing": {
+    "infer_only": {
+      "float_pytorch": {
+        "per_iter_ms": 212.51498050056398,
+        "ms_per_sample": 0.830136642580328,
+        "iters": 200.0,
+        "batch_size": 256.0,
+        "total_s": 42.502996100112796
+      },
+      "lut_numpy_packed": {
+        "per_iter_ms": 16.860307999886572,
+        "ms_per_sample": 0.06586057812455692,
+        "iters": 200.0,
+        "batch_size": 256.0,
+        "total_s": 3.3720615999773145
+      },
+      "lut_numba_packed": {
+        "per_iter_ms": 3.2945659989491105,
+        "ms_per_sample": 0.012869398433394963,
+        "iters": 200.0,
+        "batch_size": 256.0,
+        "total_s": 0.6589131997898221
+      }
+    },
+    "end2end": {
+      "lut_numpy_prepare_plus_infer": {
+        "per_iter_ms": 176.1898250086233,
+        "ms_per_sample": 0.6882415039399348,
+        "iters": 20.0,
+        "batch_size": 256.0,
+        "total_s": 3.523796500172466
+      },
+      "lut_numba_prepare_plus_infer": {
+        "per_iter_ms": 165.56514999829233,
+        "ms_per_sample": 0.6467388671808294,
+        "iters": 20.0,
+        "batch_size": 256.0,
+        "total_s": 3.3113029999658465
+      },
+      "note": "end2end includes packing/adapter extraction each iteration; measured with fewer iters."
+    }
+  },
+  "memory": {
+    "float_model": {
+      "params_bytes": 200368,
+      "buffers_bytes": 0,
+      "total_bytes": 200368,
+      "params_count": 50092,
+      "buffers_count": 0
+    },
+    "lut_total_bytes": 199728,
+    "lut_breakdown_total": {
+      "knots_bytes": 144,
+      "q_table_bytes": 66528,
+      "scale_bytes": 66528,
+      "y_min_bytes": 66528
+    },
+    "lut_layers": [
+      {
+        "layer_idx": 0,
+        "artifact": "layer0_L2_symmetric_int8_linear_closed_zero_spline_spline_component.npz",
+        "lut_total_bytes": 164784,
+        "breakdown": {
+          "knots_bytes": 48,
+          "q_table_bytes": 54912,
+          "scale_bytes": 54912,
+          "y_min_bytes": 54912
+        }
+      },
+      {
+        "layer_idx": 1,
+        "artifact": "layer1_L2_symmetric_int8_linear_closed_zero_spline_spline_component.npz",
+        "lut_total_bytes": 33840,
+        "breakdown": {
+          "knots_bytes": 48,
+          "q_table_bytes": 11264,
+          "scale_bytes": 11264,
+          "y_min_bytes": 11264
+        }
+      },
+      {
+        "layer_idx": 2,
+        "artifact": "layer2_L2_symmetric_int8_linear_closed_zero_spline_spline_component.npz",
+        "lut_total_bytes": 1104,
+        "breakdown": {
+          "knots_bytes": 48,
+          "q_table_bytes": 352,
+          "scale_bytes": 352,
+          "y_min_bytes": 352
+        }
+      }
+    ]
+  }
+}

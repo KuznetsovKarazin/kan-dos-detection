@@ -1,0 +1,66 @@
+checkpoint directory created: ./model
+saving model version 0.0
+[OK] Saved: experiment_data\runs\20260102_201007_seed42_DoS_Hulk_w32-16_g5_k3\lut_sweeps_v2\seed2_L8_asymmetric_uint8_linear_closed_clip_x_spline_component\lut_report_unified.json
+[QUALITY] float: {
+  "accuracy": 0.9899491507086444,
+  "precision": 0.9843629673996749,
+  "recall": 0.9957156767283349,
+  "f1": 0.9900067768897304,
+  "roc_auc": 0.9991061054136088,
+  "pr_auc": 0.9990538477962826,
+  "confusion": {
+    "tp": 46017,
+    "tn": 45484,
+    "fp": 731,
+    "fn": 198
+  }
+}
+[QUALITY] lut_numpy: {
+  "accuracy": 0.9894839337877313,
+  "precision": 0.982592,
+  "recall": 0.9966244725738397,
+  "f1": 0.9895584917821463,
+  "roc_auc": 0.99905284874007,
+  "pr_auc": 0.9989945011988975,
+  "confusion": {
+    "tp": 46059,
+    "tn": 45399,
+    "fp": 816,
+    "fn": 156
+  }
+}
+[QUALITY] lut_numba: {
+  "accuracy": 0.9894839337877313,
+  "precision": 0.982592,
+  "recall": 0.9966244725738397,
+  "f1": 0.9895584917821463,
+  "roc_auc": 0.9990528482718672,
+  "pr_auc": 0.998994501126584,
+  "confusion": {
+    "tp": 46059,
+    "tn": 45399,
+    "fp": 816,
+    "fn": 156
+  }
+}
+[TIMING infer-only] float_pytorch: {
+  "per_iter_ms": 209.94637750089169,
+  "ms_per_sample": 0.8201030371128581,
+  "iters": 200.0,
+  "batch_size": 256.0,
+  "total_s": 41.98927550017834
+}
+[TIMING infer-only] lut_numpy_packed: {
+  "per_iter_ms": 15.47150450060144,
+  "ms_per_sample": 0.06043556445547438,
+  "iters": 200.0,
+  "batch_size": 256.0,
+  "total_s": 3.094300900120288
+}
+[TIMING infer-only] lut_numba_packed: {
+  "per_iter_ms": 3.2914739986881614,
+  "ms_per_sample": 0.01285732030737563,
+  "iters": 200.0,
+  "batch_size": 256.0,
+  "total_s": 0.6582947997376323
+}

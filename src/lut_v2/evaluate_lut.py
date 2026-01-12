@@ -5,11 +5,17 @@ import argparse
 import json
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import torch
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import (
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    average_precision_score,
+)
 
 from kan import KAN
 
@@ -21,6 +27,7 @@ from src.lut_core.kernels.lut_backend_dense_numpy import forward_dense_numpy
 try:
     import numba as nb  # noqa: F401
     from src.lut_core.kernels.lut_backend_dense_numba import forward_dense_numba
+
     NUMBA_OK = True
 except Exception:
     NUMBA_OK = False
@@ -29,9 +36,23 @@ except Exception:
 # -----------------------------
 # Utility
 # -----------------------------
-def _sigmoid(x: np.ndarray) -> np.ndarray:
-    x = np.asarray(x, dtype=np.float32)
-    return 1.0 / (1.0 + np.exp(-x, dtype=np.float32))
+def _sigmoid_stable(x: np.ndarray) -> np.ndarray:
+    """
+    Stable sigmoid. Always returns float64 array.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    out = np.empty_like(x, dtype=np.float64)
+    pos = x >= 0
+    neg = ~pos
+    out[pos] = 1.0 / (1.0 + np.exp(-x[pos]))
+    expx = np.exp(x[neg])
+    out[neg] = expx / (1.0 + expx)
+    return out
+
+
+def _ensure_1d(a: np.ndarray) -> np.ndarray:
+    a = np.asarray(a)
+    return a.reshape(-1)
 
 
 def _load_json(p: Path) -> Optional[Dict[str, Any]]:
@@ -67,7 +88,7 @@ def _resolve_layer_paths(lut_dir: Path, manifest: Dict[str, Any]) -> List[Path]:
             out.append(p2)
             continue
 
-        # try normalize windows path -> just take name
+        # normalize windows path -> just take name
         p3 = lut_dir / Path(raw.replace("\\", "/")).name
         if p3.exists():
             out.append(p3)
@@ -146,18 +167,69 @@ def timing_block(lat: Dict[str, float], batch_size: int) -> Dict[str, float]:
     }
 
 
-def classification_metrics_from_logits(logits: np.ndarray, y_true: np.ndarray, threshold: float) -> Dict[str, float]:
-    logits = np.asarray(logits, dtype=np.float32).reshape(-1)
-    y_true = np.asarray(y_true).reshape(-1).astype(int)
+def _maybe_prob_from_scores(scores: np.ndarray) -> np.ndarray:
+    """
+    If scores do not look like probabilities in [0,1], treat as logits and apply sigmoid.
+    """
+    s = _ensure_1d(np.asarray(scores))
+    if s.size == 0:
+        return s.astype(np.float64)
+    s_min = float(np.min(s))
+    s_max = float(np.max(s))
+    # If outside [0,1] (with small tolerance), assume logits.
+    if s_min < -1e-6 or s_max > 1.0 + 1e-6:
+        return _sigmoid_stable(s)
+    return s.astype(np.float64)
 
-    proba = _sigmoid(logits)
-    y_pred = (proba > float(threshold)).astype(int)
+
+def classification_metrics_from_scores(
+    scores: np.ndarray,
+    y_true: np.ndarray,
+    threshold: float,
+) -> Dict[str, Any]:
+    """
+    Computes threshold metrics + ROC-AUC + PR-AUC (Average Precision).
+    scores can be logits or probabilities (auto-detected).
+    """
+    y_true = _ensure_1d(np.asarray(y_true)).astype(int)
+    prob = _maybe_prob_from_scores(scores)
+    y_pred = (prob > float(threshold)).astype(int)
 
     acc = float((y_pred == y_true).mean())
     prec = float(precision_score(y_true, y_pred, zero_division=0))
     rec = float(recall_score(y_true, y_pred, zero_division=0))
     f1 = float(f1_score(y_true, y_pred, zero_division=0))
-    return {"accuracy": acc, "precision": prec, "recall": rec, "f1": f1}
+
+    # Confusion
+    tp = int(np.sum((y_pred == 1) & (y_true == 1)))
+    tn = int(np.sum((y_pred == 0) & (y_true == 0)))
+    fp = int(np.sum((y_pred == 1) & (y_true == 0)))
+    fn = int(np.sum((y_pred == 0) & (y_true == 1)))
+
+    # AUCs require both classes present
+    unique = np.unique(y_true)
+    if unique.size < 2:
+        roc = None
+        pr = None
+    else:
+        try:
+            roc = float(roc_auc_score(y_true, prob))
+        except Exception:
+            roc = None
+        try:
+            pr = float(average_precision_score(y_true, prob))
+        except Exception:
+            pr = None
+
+    return {
+        "accuracy": acc,
+        "precision": prec,
+        "recall": rec,
+        "f1": f1,
+        "roc_auc": roc,
+        "pr_auc": pr,
+        "confusion": {"tp": tp, "tn": tn, "fp": fp, "fn": fn},
+    }
 
 
 # -----------------------------
@@ -194,9 +266,12 @@ def forward_packed_numba(x: np.ndarray, packed_layers: List[PackedLUT]) -> np.nd
     return h
 
 
-def torch_forward_logits(model: Any, x: np.ndarray, device: str) -> np.ndarray:
+def torch_forward_logits_numpy(model: Any, x: np.ndarray, device: str) -> np.ndarray:
+    """
+    For QUALITY evaluation (full test set): returns logits as numpy.
+    """
     xt = torch.as_tensor(x, dtype=torch.float32, device=device)
-    with torch.no_grad():
+    with torch.inference_mode():
         y = model(xt)
     return y.detach().cpu().numpy().astype(np.float32, copy=False)
 
@@ -239,6 +314,7 @@ def main() -> None:
     if NUMBA_OK:
         try:
             import numba as nb2
+
             nb2.set_num_threads(int(args.threads_numba))
         except Exception:
             pass
@@ -256,7 +332,10 @@ def main() -> None:
     y_true = dataset["test_label"].detach().cpu().numpy().reshape(-1).astype(int)
 
     bs = min(int(args.batch_size), int(X_test.shape[0]))
-    xb = X_test[:bs]
+    xb_np = X_test[:bs]  # fixed input batch for timing (numpy)
+
+    # IMPORTANT: for float timing, avoid per-iter numpy->torch conversion and cpu copies
+    xb_t = torch.as_tensor(xb_np, dtype=torch.float32, device=args.device)
 
     # Load float metrics.json as "historical reference" (optional)
     float_metrics_ref = _load_json(run_dir / "metrics.json")
@@ -277,76 +356,84 @@ def main() -> None:
         lut_total += int(rep["lut_total_bytes"])
         for k, v in rep["breakdown"].items():
             lut_break_total[k] += int(v)
-        lut_layers_mem.append(
-            {"layer_idx": int(layer_idx), "artifact": p.name, **rep}
-        )
+        lut_layers_mem.append({"layer_idx": int(layer_idx), "artifact": p.name, **rep})
 
     # Prepare packed layers once (for infer-only)
     packed_layers = prepare_packed_layers(model, layer_paths, device=args.device)
 
-    # Optional: warm up numba compilation with correct shape
+    # Optional: warm up numba compilation with correct shape (important for bs=1)
     if NUMBA_OK:
-        _ = forward_packed_numba(xb, packed_layers)
-        _ = forward_packed_numba(xb, packed_layers)
+        _ = forward_packed_numba(xb_np, packed_layers)
+        _ = forward_packed_numba(xb_np, packed_layers)
 
-    # Quality metrics
-    logits_float = torch_forward_logits(model, X_test, device=args.device)
-    float_quality = classification_metrics_from_logits(logits_float, y_true, threshold=float(args.threshold))
+    # -------------------------
+    # Quality metrics (full test split)
+    # -------------------------
+    logits_float = torch_forward_logits_numpy(model, X_test, device=args.device)
+    float_quality = classification_metrics_from_scores(logits_float, y_true, threshold=float(args.threshold))
 
     logits_lut_np = forward_packed_numpy(X_test, packed_layers)
-    lut_quality_numpy = classification_metrics_from_logits(logits_lut_np, y_true, threshold=float(args.threshold))
+    lut_quality_numpy = classification_metrics_from_scores(logits_lut_np, y_true, threshold=float(args.threshold))
 
     lut_quality_numba = None
     if NUMBA_OK:
         logits_lut_nb = forward_packed_numba(X_test, packed_layers)
-        lut_quality_numba = classification_metrics_from_logits(logits_lut_nb, y_true, threshold=float(args.threshold))
+        lut_quality_numba = classification_metrics_from_scores(logits_lut_nb, y_true, threshold=float(args.threshold))
 
-    # Timing: (1) float infer-only (PyTorch)
+    # -------------------------
+    # Timing: infer-only
+    # -------------------------
+    # (1) float infer-only (PyTorch) — fixed xb_t, no numpy->torch conversion, no cpu copy per iter
     def fn_float_infer() -> None:
-        _ = torch_forward_logits(model, xb, device=args.device)
+        with torch.inference_mode():
+            _ = model(xb_t)
 
     lat = measure_latency(fn_float_infer, warmup_iters=int(args.warmup_iters), measure_iters=int(args.measure_iters))
     timing_float_infer_only = timing_block(lat, batch_size=bs)
 
-    # Timing: (2) LUT infer-only numpy (packed)
+    # (2) LUT infer-only numpy (packed)
     def fn_lut_infer_numpy() -> None:
-        _ = forward_packed_numpy(xb, packed_layers)
+        _ = forward_packed_numpy(xb_np, packed_layers)
 
     lat = measure_latency(fn_lut_infer_numpy, warmup_iters=int(args.warmup_iters), measure_iters=int(args.measure_iters))
     timing_lut_infer_numpy = timing_block(lat, batch_size=bs)
 
-    # Timing: (3) LUT infer-only numba (packed)
+    # (3) LUT infer-only numba (packed)
     timing_lut_infer_numba = None
     if NUMBA_OK:
+
         def fn_lut_infer_numba() -> None:
-            _ = forward_packed_numba(xb, packed_layers)
+            _ = forward_packed_numba(xb_np, packed_layers)
 
         lat = measure_latency(fn_lut_infer_numba, warmup_iters=int(args.warmup_iters), measure_iters=int(args.measure_iters))
         timing_lut_infer_numba = timing_block(lat, batch_size=bs)
 
+    # -------------------------
     # Timing: end2end includes packing inside the timed function
-    # Use fewer iters to keep it practical; still comparable within itself
+    # -------------------------
     e2e_warm = 3
     e2e_it = 20
 
     def _prepare_and_forward_numpy() -> None:
         pl = prepare_packed_layers(model, layer_paths, device=args.device)
-        _ = forward_packed_numpy(xb, pl)
+        _ = forward_packed_numpy(xb_np, pl)
 
     lat = measure_latency(_prepare_and_forward_numpy, warmup_iters=e2e_warm, measure_iters=e2e_it)
     timing_lut_e2e_numpy = timing_block(lat, batch_size=bs)
 
     timing_lut_e2e_numba = None
     if NUMBA_OK:
+
         def _prepare_and_forward_numba() -> None:
             pl = prepare_packed_layers(model, layer_paths, device=args.device)
-            # compile per-run: warmup included
-            _ = forward_packed_numba(xb, pl)
+            _ = forward_packed_numba(xb_np, pl)
 
         lat = measure_latency(_prepare_and_forward_numba, warmup_iters=e2e_warm, measure_iters=e2e_it)
         timing_lut_e2e_numba = timing_block(lat, batch_size=bs)
 
+    # -------------------------
     # Optional phi_error diagnostics (kept off by default; expensive)
+    # -------------------------
     phi_error = None
     if args.phi_error:
         # Local import to avoid overhead/extra deps; will use edges + LUT
@@ -358,11 +445,11 @@ def main() -> None:
             edges = adapter.extract_edges()
             art = load_lut_npz(p)
             rep = evaluate_phi_error_on_grid(edges, art, num_points=int(args.phi_points), topk=int(args.phi_topk))
-            phi_error.append(
-                {"layer_idx": int(layer_idx), "artifact": p.name, **rep}
-            )
+            phi_error.append({"layer_idx": int(layer_idx), "artifact": p.name, **rep})
 
+    # -------------------------
     # Build unified report
+    # -------------------------
     report: Dict[str, Any] = {
         "task": "kan_dos_detection_lut_eval_unified",
         "run_dir": str(run_dir),
@@ -392,13 +479,11 @@ def main() -> None:
             "float_metrics_reference_file": float_metrics_ref,  # optional; your old metrics.json
         },
         "timing": {
-            # infer-only (comparable across methods)
             "infer_only": {
                 "float_pytorch": timing_float_infer_only,
                 "lut_numpy_packed": timing_lut_infer_numpy,
                 "lut_numba_packed": timing_lut_infer_numba,
             },
-            # end-to-end (useful for deployment budgets; not directly comparable to float_pytorch)
             "end2end": {
                 "lut_numpy_prepare_plus_infer": timing_lut_e2e_numpy,
                 "lut_numba_prepare_plus_infer": timing_lut_e2e_numba,
