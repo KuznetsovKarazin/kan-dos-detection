@@ -200,15 +200,16 @@ When reporting speed, specify:
 If you use this work in your research, please cite:
 
 ```bibtex
-@article{Kuznetsov_2025,
-  title   = {Efficient Denial of Service Attack Detection in IoT using Kolmogorov-Arnold Networks},
-  url     = {http://arxiv.org/abs/2502.01835},
-  doi     = {10.48550/arXiv.2502.01835},
-  note    = {arXiv:2502.01835 [cs]},
+@article{Kuznetsov_2026,
+  title   = {LUT-Compiled Kolmogorov-Arnold Networks for Lightweight DoS Detection on IoT Edge Devices},
+  url     = {http://arxiv.org/abs/2601.08044},
+  doi     = {10.48550/arXiv.2601.08044},
+  note    = {arXiv:2601.08044 [cs]},
   author  = {Kuznetsov, Oleksandr},
-  year    = {2025},
-  month   = feb
+  year    = {2026},
+  month   = jan
 }
+
 ```
 
 ## License
@@ -218,7 +219,7 @@ This project is licensed under the MIT License.
 ## Contact
 
 - Oleksandr Kuznetsov - oleksandr.o.kuznetsov@gmail.com
-- Project Link: https://github.com/KuznetsovKarazin/kan-dos-detection
+- Project Link: https://github.com/KuznetsovKarazin/kan-dos-detection/tree/lut-v2
 
 ## Acknowledgments
 
