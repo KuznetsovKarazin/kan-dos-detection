@@ -278,8 +278,10 @@ def main() -> None:
                                             })
 
                                             # Mark potential confusion: reference timing might be from another batch
-                                            ref = report.get("quality", {}).get("float_metrics_reference_file", {})
+                                            ref = report.get("quality", {}).get("float_metrics_reference_file") or {}
                                             ref_timing = ref.get("timing", {})
+                                            #ref = report.get("quality", {}).get("float_metrics_reference_file", {})
+                                            #ref_timing = ref.get("timing", {})
                                             if isinstance(ref_timing, dict) and "batch_size" in ref_timing:
                                                 if int(ref_timing["batch_size"]) != int(bs):
                                                     report.setdefault("notes", [])

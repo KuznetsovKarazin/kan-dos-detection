@@ -19,3 +19,15 @@ experiment_data/**/*.pt
 
 # Misc
 .DS_Store
+
+# Large experiment artifacts
+experiment_data/runs/*/dataset.pt
+experiment_data/runs/*/trained_model.pt
+experiment_data/runs/*/lut_sweeps_v2/
+experiment_data/runs/*/lut_results_summary.csv/
+experiment_data/runs/*/lut_phi_*/
+data/*.csv
+ids_hw/.pio/
+venv/
+__pycache__/
+*.pyc

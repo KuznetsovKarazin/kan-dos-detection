@@ -1,0 +1,24 @@
+============================================================
+  HARDWARE BENCHMARK RESULTS
+============================================================
+  Timestamp  : 20260523_014826
+  Model      : LUT_KAN (L=2)
+  Board      : Arduino Mega 2560
+  F1 (test)  : 0.9874     ROC-AUC : 0.9991
+  Size       : 194 KB
+  SRAM used  : 2016 B (2.0 KB)
+  Samples    : 40   Accuracy on hw : 1.0
+
+  Latency per inference:
+    mean = 245884.5 us    std = 101.6 us
+    min  = 245784 us    max = 246196 us
+
+------------------------------------------------------------
+  PAPER-READY BLOCK
+------------------------------------------------------------
+  Model: LUT_KAN (L=2) | Board: Arduino Mega 2560
+  Inference latency: 245884.5 +/- 101.6 us (min 245784, max 246196)
+  SRAM usage: 2016 B (2.0 KB)
+  F1 (CICIDS2017 test set): 0.9874  |  ROC-AUC: 0.9991
+  Model size: 194 KB
+------------------------------------------------------------

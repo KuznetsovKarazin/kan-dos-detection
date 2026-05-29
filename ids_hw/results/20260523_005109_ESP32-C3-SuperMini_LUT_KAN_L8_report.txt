@@ -1,0 +1,24 @@
+============================================================
+  HARDWARE BENCHMARK RESULTS
+============================================================
+  Timestamp  : 20260523_005109
+  Model      : LUT_KAN (L=8)
+  Board      : ESP32-C3-SuperMini
+  F1 (test)  : 0.9896     ROC-AUC : 0.9991
+  Size       : 519 KB
+  SRAM used  : 19096 B (18 KB, model in Flash/XIP)
+  Samples    : 40   Accuracy on hw : 1.0
+
+  Latency per inference:
+    mean = 25793.1 us    std = 133.2 us
+    min  = 25653 us    max = 25997 us
+
+------------------------------------------------------------
+  PAPER-READY BLOCK
+------------------------------------------------------------
+  Model: LUT_KAN (L=8) | Board: ESP32-C3-SuperMini
+  Inference latency: 25793.1 +/- 133.2 us (min 25653, max 25997)
+  SRAM usage: 19096 B (18 KB, model in Flash/XIP)
+  F1 (CICIDS2017 test set): 0.9896  |  ROC-AUC: 0.9991
+  Model size: 519 KB
+------------------------------------------------------------
