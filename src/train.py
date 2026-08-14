@@ -1,272 +1,388 @@
-"""
-DoS Detection using KAN - Enhanced Training Module
-This module implements advanced data preparation and model training for DoS attack detection
-using Kolmogorov-Arnold Networks (KAN).
+"""Leakage-free KAN training for the CICIDS2017 DoS case study.
 
-Author: Oleksandr Kuznetsov
-Date: February 2025
+This revision preserves the original NCA case-study architecture and training
+hyperparameters while correcting preprocessing leakage and recording a complete
+run provenance bundle.
 """
+from __future__ import annotations
 
-import torch
+import argparse
+import hashlib
+import json
+import os
+import pickle
+import platform
+import random
+import subprocess
+import sys
+from datetime import datetime
+from importlib import metadata
+from pathlib import Path
+from typing import Any
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+import sklearn
+import torch
 from kan import KAN
-import pickle
-import os
-from pathlib import Path
-import matplotlib.pyplot as plt
-from datetime import datetime
+from sklearn.metrics import (
+    accuracy_score,
+    average_precision_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 
-def prepare_dos_data(filepath, attack_type='DoS Hulk', max_samples_per_class=50000):
-    """
-    Prepare balanced dataset for DoS attack detection with enhanced data processing.
-    """
-    print("Loading data...")
-    df = pd.read_csv(filepath)
-    
-    print("\nUnique labels in dataset:")
-    attack_stats = df[' Label'].value_counts()
-    print(attack_stats)
-    
-    plt.figure(figsize=(10, 6))
-    attack_stats.plot(kind='bar')
-    plt.title('Distribution of Attack Types')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    Path('experiment_data/figures').mkdir(parents=True, exist_ok=True)
-    plt.savefig('experiment_data/figures/attack_distribution.png')
-    plt.close()
-    
-    # Balance classes with maximum available samples
-    max_samples = min(
-        max_samples_per_class,
-        df[df[' Label'] == 'BENIGN'].shape[0],
-        df[df[' Label'] == attack_type].shape[0]
-    )
-    
-    print(f"\nUsing {max_samples} samples per class")
-    
-    benign_samples = df[df[' Label'] == 'BENIGN'].sample(n=max_samples, random_state=42)
-    attack_samples = df[df[' Label'] == attack_type].sample(n=max_samples, random_state=42)
-    
-    df = pd.concat([benign_samples, attack_samples])
-    
-    df['attack'] = (df[' Label'] != 'BENIGN').astype(int)
-    
-    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    numeric_cols = [col for col in numeric_cols if col != 'attack']
-    
-    # Enhanced data cleaning
-    df = df.replace([np.inf, -np.inf], np.nan)
-    
-    feature_stats = []
-    for col in numeric_cols:
-        median = df[col].median()
-        df[col] = df[col].fillna(median)
-        
-        q1 = df[col].quantile(0.25)
-        q3 = df[col].quantile(0.75)
-        iqr = q3 - q1
-        lower_bound = q1 - 3 * iqr
-        upper_bound = q3 + 3 * iqr
-        outliers = ((df[col] < lower_bound) | (df[col] > upper_bound)).sum()
-        
-        df[col] = df[col].clip(lower_bound, upper_bound)
-        
-        feature_stats.append({
-            'feature': col,
-            'median': median,
-            'q1': q1,
-            'q3': q3,
-            'outliers': outliers
-        })
-    
-    # Save feature statistics
-    pd.DataFrame(feature_stats).to_csv('experiment_data/feature_stats.csv', index=False)
-    
-    scaler = StandardScaler()
-    X = scaler.fit_transform(df[numeric_cols])
-    y = df['attack'].values
-    
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-    
-    dataset = {
-        'train_input': torch.FloatTensor(X_train),
-        'train_label': torch.FloatTensor(y_train).reshape(-1, 1),
-        'test_input': torch.FloatTensor(X_test),
-        'test_label': torch.FloatTensor(y_test).reshape(-1, 1)
-    }
-    
-    print(f"\nDataset shapes:")
-    print(f"Train: {X_train.shape}")
-    print(f"Test: {X_test.shape}")
-    print(f"\nClass distribution in train:")
-    print(pd.Series(y_train).value_counts(normalize=True))
-    
-    return dataset, scaler, numeric_cols
+try:
+    from src.cicids_preprocessing import prepare_cicids_dos_data
+except ModuleNotFoundError:  # supports legacy: python src/train.py
+    from cicids_preprocessing import prepare_cicids_dos_data
 
-def train_kan_model(dataset, input_dim, epochs=100):
+
+def _sha256_file(path: Path, chunk_bytes: int = 8 * 1024 * 1024) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        while True:
+            chunk = f.read(chunk_bytes)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _git_value(*args: str) -> str:
+    try:
+        return subprocess.check_output(
+            ["git", *args], stderr=subprocess.DEVNULL, text=True
+        ).strip()
+    except Exception:
+        return "unknown"
+
+
+def _dist_version(name: str) -> str:
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return "unknown"
+
+
+def _pykan_provenance() -> dict[str, Any]:
+    out: dict[str, Any] = {"version": _dist_version("pykan")}
+    try:
+        dist = metadata.distribution("pykan")
+        raw = dist.read_text("direct_url.json")
+        if raw:
+            direct = json.loads(raw)
+            out["direct_url"] = direct.get("url")
+            out["vcs_info"] = direct.get("vcs_info")
+    except Exception:
+        pass
+    try:
+        import kan
+
+        out["module_file"] = str(Path(kan.__file__).resolve())
+    except Exception:
+        pass
+    return out
+
+
+def _json_default(obj: Any):
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (np.floating,)):
+        return float(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, Path):
+        return str(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.write_text(json.dumps(payload, indent=2, default=_json_default), encoding="utf-8")
+
+
+def _set_seeds(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def _run_name(seed: int, attack_type: str) -> str:
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_attack = attack_type.replace(" ", "_")
+    return f"{ts}_seed{seed}_{safe_attack}_w32-16_g5_k3_NCA_R1"
+
+
+def _save_prepared(run_dir: Path, prepared) -> None:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(prepared.dataset, run_dir / "dataset.pt")
+    with (run_dir / "scaler.pkl").open("wb") as f:
+        pickle.dump(prepared.scaler, f)
+    with (run_dir / "features.pkl").open("wb") as f:
+        pickle.dump(prepared.features, f)
+    with (run_dir / "preprocessing.pkl").open("wb") as f:
+        pickle.dump(prepared.preprocessing_state, f)
+    prepared.feature_stats.to_csv(run_dir / "feature_stats.csv", index=False)
+    np.savez_compressed(run_dir / "split_indices.npz", **prepared.split_indices)
+    _write_json(run_dir / "preprocessing_manifest.json", prepared.preprocessing_manifest)
+
+
+def _load_prepared(run_dir: Path):
+    dataset = torch.load(run_dir / "dataset.pt", map_location="cpu")
+    with (run_dir / "scaler.pkl").open("rb") as f:
+        scaler = pickle.load(f)
+    with (run_dir / "features.pkl").open("rb") as f:
+        features = pickle.load(f)
+    with (run_dir / "preprocessing.pkl").open("rb") as f:
+        preprocessing_state = pickle.load(f)
+    manifest = json.loads((run_dir / "preprocessing_manifest.json").read_text(encoding="utf-8"))
+    return dataset, scaler, features, preprocessing_state, manifest
+
+
+def train_kan_model(
+    dataset: dict[str, torch.Tensor],
+    input_dim: int,
+    *,
+    epochs: int = 200,
+    seed: int = 42,
+    lr: float = 1e-3,
+) -> tuple[KAN, dict[str, list[float]]]:
+    """Train the original [78,32,16,1], grid=5, k=3 KAN for fixed epochs.
+
+    The held-out test split is intentionally not evaluated inside the training
+    loop. It is used only once after the fixed training schedule is complete.
     """
-    Enhanced KAN model training with advanced architecture and monitoring.
-    """
-    # Create model with enhanced architecture
-    model = KAN(
-        #width=[input_dim, 64, 32, 16, 1],
-        width=[input_dim, 32, 16, 1],
-        #grid=7,
-        grid=5,
-        k=3,
-        seed=42
-    )
-    
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    model = KAN(width=[input_dim, 32, 16, 1], grid=5, k=3, seed=seed, auto_save=False)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = torch.nn.BCEWithLogitsLoss()
-    
-    history = {
-        'train_loss': [],
-        'train_acc': [],
-        'test_loss': [],
-        'test_acc': [],
-        'epochs': []
-    }
-    
-    print("\nModel architecture:")
-    print(f"Input dimension: {input_dim}")
-    print(f"Hidden layers: {model.width[1:-1]}")
-    print(f"Grid points: {model.grid}")
-    print(f"Spline degree: {model.k}")
-    
-    print("\nStarting training...")
-    
-    best_test_acc = 0
-    patience = 10
-    no_improve = 0
-    
+    history: dict[str, list[float]] = {"epochs": [], "train_loss": [], "train_acc": []}
+
+    print(f"\nModel: [{input_dim} -> 32 -> 16 -> 1], grid=5, k=3, seed={seed}")
+    print("Training for a fixed schedule; test split is not inspected per epoch.")
+
     for epoch in range(epochs):
         model.train()
-        outputs = model(dataset['train_input'])
-        loss = criterion(outputs, dataset['train_label'])
-        
+        logits = model(dataset["train_input"])
+        loss = criterion(logits, dataset["train_label"])
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        
-        model.eval()
+
         with torch.no_grad():
-            train_pred = (torch.sigmoid(outputs) > 0.5).float()
-            train_acc = (train_pred == dataset['train_label']).float().mean()
-            
-            test_outputs = model(dataset['test_input'])
-            test_loss = criterion(test_outputs, dataset['test_label'])
-            test_pred = (torch.sigmoid(test_outputs) > 0.5).float()
-            test_acc = (test_pred == dataset['test_label']).float().mean()
-        
-        history['train_loss'].append(loss.item())
-        history['train_acc'].append(train_acc.item())
-        history['test_loss'].append(test_loss.item())
-        history['test_acc'].append(test_acc.item())
-        history['epochs'].append(epoch + 1)
-        
-        if test_acc > best_test_acc:
-            best_test_acc = test_acc
-            no_improve = 0
-        else:
-            no_improve += 1
-        
-        #if no_improve >= patience:
-        #    print(f"\nEarly stopping at epoch {epoch+1}")
-        #    break
-        
-        if (epoch + 1) % 10 == 0:
-            print(f'Epoch [{epoch+1}/{epochs}]')
-            print(f'Train Loss: {loss.item():.4f}, Train Acc: {train_acc.item():.4f}')
-            print(f'Test Loss: {test_loss.item():.4f}, Test Acc: {test_acc.item():.4f}')
-    
+            train_pred = (torch.sigmoid(logits) >= 0.5).float()
+            train_acc = (train_pred == dataset["train_label"]).float().mean().item()
+
+        history["epochs"].append(epoch + 1)
+        history["train_loss"].append(float(loss.item()))
+        history["train_acc"].append(float(train_acc))
+
+        if (epoch + 1) % 10 == 0 or epoch == 0:
+            print(
+                f"Epoch [{epoch + 1}/{epochs}] "
+                f"train_loss={loss.item():.6f} train_acc={train_acc:.6f}"
+            )
+
     return model, history
 
-def plot_training_curves(history, save_dir='experiment_data/figures'):
-    """
-    Plot and save enhanced training curves.
-    """
-    save_dir = Path(save_dir)
-    save_dir.mkdir(parents=True, exist_ok=True)
-    
-    plt.figure(figsize=(15, 5))
-    
-    plt.subplot(1, 2, 1)
-    plt.plot(history['epochs'], history['train_loss'], label='Train Loss')
-    plt.plot(history['epochs'], history['test_loss'], label='Test Loss')
-    plt.title('Loss During Training')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.grid(True)
-    
-    plt.subplot(1, 2, 2)
-    plt.plot(history['epochs'], history['train_acc'], label='Train Accuracy')
-    plt.plot(history['epochs'], history['test_acc'], label='Test Accuracy')
-    plt.title('Accuracy During Training')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.grid(True)
-    
-    plt.tight_layout()
-    plt.savefig(save_dir / 'training_curves.png', dpi=300, bbox_inches='tight')
-    plt.close()
 
-def save_experiment(dataset, scaler, features, model, history, save_dir='experiment_data'):
-    """
-    Enhanced experiment saving with metadata.
-    """
-    save_dir = Path(save_dir)
-    save_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Save dataset
-    torch.save(dataset, save_dir / 'dataset.pt')
-    
-    # Save scaler
-    with open(save_dir / 'scaler.pkl', 'wb') as f:
-        pickle.dump(scaler, f)
-    
-    # Save features list
-    with open(save_dir / 'features.pkl', 'wb') as f:
-        pickle.dump(features, f)
-    
-    # Save model and training history
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'history': history,
-        'architecture': {
-            'width': model.width,
-            'grid': model.grid,
-            'k': model.k
+def _fixed_threshold_metrics(model: KAN, dataset: dict[str, torch.Tensor], threshold: float = 0.5) -> dict[str, Any]:
+    model.eval()
+    with torch.no_grad():
+        probs = torch.sigmoid(model(dataset["test_input"])).cpu().numpy().reshape(-1)
+    y_true = dataset["test_label"].cpu().numpy().astype(int).reshape(-1)
+    y_pred = (probs >= threshold).astype(int)
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    return {
+        "threshold": float(threshold),
+        "metrics": {
+            "accuracy": float(accuracy_score(y_true, y_pred)),
+            "precision": float(precision_score(y_true, y_pred, zero_division=0)),
+            "recall": float(recall_score(y_true, y_pred, zero_division=0)),
+            "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+            "roc_auc": float(roc_auc_score(y_true, probs)),
+            "pr_auc": float(average_precision_score(y_true, probs)),
         },
-        'timestamp': datetime.now().isoformat()
-    }, save_dir / 'trained_model.pt')
-    
-    # Plot training curves
-    plot_training_curves(history)
-    
-    print(f"Experiment saved to {save_dir}")
+        "confusion_matrix": {
+            "tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)
+        },
+        "class_counts": {
+            "test_benign": int((y_true == 0).sum()),
+            "test_attack": int((y_true == 1).sum()),
+        },
+    }
+
+
+def _plot_training_curves(history: dict[str, list[float]], run_dir: Path) -> None:
+    fig_dir = run_dir / "figures"
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
+    axes[0].plot(history["epochs"], history["train_loss"])
+    axes[0].set(title="Training loss", xlabel="Epoch", ylabel="BCEWithLogits loss")
+    axes[0].grid(True)
+    axes[1].plot(history["epochs"], history["train_acc"])
+    axes[1].set(title="Training accuracy", xlabel="Epoch", ylabel="Accuracy")
+    axes[1].grid(True)
+    fig.tight_layout()
+    fig.savefig(fig_dir / "training_curves.png", dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _save_model(run_dir: Path, model: KAN, history: dict[str, list[float]], seed: int) -> None:
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "history": history,
+            # Store constructor arguments, not PyKAN's internal model.width representation.
+            "architecture": {"width": [78, 32, 16, 1], "grid": 5, "k": 3, "seed": seed, "auto_save": False},
+            "timestamp": datetime.now().isoformat(),
+            "revision": "NCA_R1_leakage_free",
+        },
+        run_dir / "trained_model.pt",
+    )
+
+
+def _build_run_meta(args, run_dir: Path, data_path: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "run_dir": str(run_dir),
+        "created_at": datetime.now().isoformat(),
+        "git": {
+            "commit": _git_value("rev-parse", "HEAD"),
+            "branch": _git_value("branch", "--show-current"),
+            "dirty": bool(_git_value("status", "--porcelain")),
+        },
+        "config": {
+            "data_path": str(data_path),
+            "attack_type": args.attack_type,
+            "max_samples_per_class": args.max_samples_per_class,
+            "test_size": args.test_size,
+            "seed": args.seed,
+            "epochs": args.epochs,
+            "lr": args.lr,
+            "width": [78, 32, 16, 1],
+            "grid": 5,
+            "k": 3,
+            "threshold": 0.5,
+            "preprocessing": "train-fit median -> 3xIQR clipping -> StandardScaler",
+        },
+        "dataset": {
+            "sha256": _sha256_file(data_path),
+            "selected_total": manifest["selected_total"],
+            "train_total": manifest["train_total"],
+            "test_total": manifest["test_total"],
+            "feature_count": manifest["feature_count"],
+        },
+        "environment": {
+            "python": sys.version.split()[0],
+            "platform": platform.platform(),
+            "torch": torch.__version__,
+            "numpy": np.__version__,
+            "pandas": pd.__version__,
+            "scikit_learn": sklearn.__version__,
+            "pykan": _pykan_provenance(),
+        },
+    }
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Leakage-free CICIDS2017 DoS KAN training for NCA R1")
+    ap.add_argument("--data", default="data/Wednesday-workingHours.pcap_ISCX.csv")
+    ap.add_argument("--attack-type", default="DoS Hulk")
+    ap.add_argument("--max-samples-per-class", type=int, default=231_073)
+    ap.add_argument("--test-size", type=float, default=0.2)
+    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--epochs", type=int, default=200)
+    ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--out-root", default="experiment_data/runs")
+    ap.add_argument("--run-dir", default=None, help="Exact run directory; otherwise a timestamped directory is created")
+    ap.add_argument("--prepare-only", action="store_true", help="Prepare and audit data, save bundle, then stop before training")
+    ap.add_argument("--reuse-prepared", action="store_true", help="Reuse dataset/preprocessing already saved in --run-dir")
+    args = ap.parse_args()
+
+    _set_seeds(args.seed)
+    data_path = Path(args.data)
+    if not data_path.exists():
+        raise FileNotFoundError(data_path)
+
+    run_dir = Path(args.run_dir) if args.run_dir else Path(args.out_root) / _run_name(args.seed, args.attack_type)
+
+    if args.reuse_prepared:
+        if args.run_dir is None:
+            raise ValueError("--reuse-prepared requires --run-dir")
+        dataset, scaler, features, preprocessing_state, manifest = _load_prepared(run_dir)
+        expected = {
+            "attack_type": args.attack_type,
+            "selected_samples_per_class": int(args.max_samples_per_class),
+            "test_size": float(args.test_size),
+            "seed": int(args.seed),
+            "feature_count": 78,
+        }
+        for key, value in expected.items():
+            if manifest.get(key) != value:
+                raise ValueError(
+                    f"Prepared-run mismatch for {key}: saved={manifest.get(key)!r}, requested={value!r}"
+                )
+        print(f"Reusing prepared data from: {run_dir}")
+    else:
+        if run_dir.exists() and any(run_dir.iterdir()):
+            raise FileExistsError(
+                f"Run directory already contains files: {run_dir}. "
+                "Use --reuse-prepared with the same --run-dir, or choose a new run directory."
+            )
+        run_dir.mkdir(parents=True, exist_ok=True)
+        prepared = prepare_cicids_dos_data(
+            data_path,
+            attack_type=args.attack_type,
+            max_samples_per_class=args.max_samples_per_class,
+            test_size=args.test_size,
+            seed=args.seed,
+            expected_feature_count=78,
+        )
+        _save_prepared(run_dir, prepared)
+        dataset = prepared.dataset
+        scaler = prepared.scaler
+        features = prepared.features
+        preprocessing_state = prepared.preprocessing_state
+        manifest = prepared.preprocessing_manifest
+
+    run_meta = _build_run_meta(args, run_dir, data_path, manifest)
+    _write_json(run_dir / "run_meta.json", run_meta)
+
+    print("\n=== Preprocessing audit ===")
+    print(f"Selected/class : {manifest['selected_samples_per_class']}")
+    print(f"Selected total : {manifest['selected_total']}")
+    print(f"Train total    : {manifest['train_total']}")
+    print(f"Test total     : {manifest['test_total']}")
+    print(f"Features       : {manifest['feature_count']}")
+    print(f"Train classes  : {manifest['train_class_counts']}")
+    print(f"Test classes   : {manifest['test_class_counts']}")
+    print(f"Split disjoint : {manifest['split_disjoint']}")
+    print(f"Run directory  : {run_dir}")
+
+    if args.prepare_only:
+        print("\nPREPARE-ONLY complete. No model was trained.")
+        return
+
+    model, history = train_kan_model(
+        dataset, input_dim=len(features), epochs=args.epochs, seed=args.seed, lr=args.lr
+    )
+    _save_model(run_dir, model, history, args.seed)
+    _plot_training_curves(history, run_dir)
+
+    metrics = _fixed_threshold_metrics(model, dataset, threshold=0.5)
+    metrics.update({"run_dir": str(run_dir), "timestamp": datetime.now().isoformat()})
+    _write_json(run_dir / "metrics.json", metrics)
+
+    print("\n=== Final held-out test metrics (threshold=0.5) ===")
+    for key, value in metrics["metrics"].items():
+        print(f"{key:>10s}: {value:.8f}")
+    print(f"confusion : {metrics['confusion_matrix']}")
+    print(f"\nSaved reproducible R1 run to: {run_dir}")
+
 
 if __name__ == "__main__":
-    data_path = Path('data/Wednesday-workingHours.pcap_ISCX.csv')
-    
-    dataset, scaler, features = prepare_dos_data(
-        data_path, 
-        attack_type='DoS Hulk',
-        max_samples_per_class=231073
-    )
-    
-    model, history = train_kan_model(
-        dataset,
-        input_dim=len(features),
-        epochs=200
-    )
-    
-    save_experiment(dataset, scaler, features, model, history)
+    main()
