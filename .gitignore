@@ -31,3 +31,5 @@ ids_hw/.pio/
 venv/
 __pycache__/
 *.pyc
+# Local reproducibility bundles for the NCA revision
+experiment_data/runs/NCA_R1_*/

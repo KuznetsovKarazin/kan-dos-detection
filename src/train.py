@@ -62,6 +62,17 @@ def _git_value(*args: str) -> str:
         return "unknown"
 
 
+def _capture_git_state() -> dict[str, Any]:
+    """Capture source-tree provenance before the run writes any artifacts."""
+    status = _git_value("status", "--porcelain")
+    return {
+        "commit": _git_value("rev-parse", "HEAD"),
+        "branch": _git_value("branch", "--show-current"),
+        "dirty": bool(status and status != "unknown"),
+        "status_porcelain": [] if not status or status == "unknown" else status.splitlines(),
+    }
+
+
 def _dist_version(name: str) -> str:
     try:
         return metadata.version(name)
@@ -239,22 +250,24 @@ def _save_model(run_dir: Path, model: KAN, history: dict[str, list[float]], seed
             "history": history,
             # Store constructor arguments, not PyKAN's internal model.width representation.
             "architecture": {"width": [78, 32, 16, 1], "grid": 5, "k": 3, "seed": seed, "auto_save": False},
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now().astimezone().isoformat(),
             "revision": "NCA_R1_leakage_free",
         },
         run_dir / "trained_model.pt",
     )
 
 
-def _build_run_meta(args, run_dir: Path, data_path: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+def _build_run_meta(
+    args,
+    run_dir: Path,
+    data_path: Path,
+    manifest: dict[str, Any],
+    git_state: dict[str, Any],
+) -> dict[str, Any]:
     return {
         "run_dir": str(run_dir),
-        "created_at": datetime.now().isoformat(),
-        "git": {
-            "commit": _git_value("rev-parse", "HEAD"),
-            "branch": _git_value("branch", "--show-current"),
-            "dirty": bool(_git_value("status", "--porcelain")),
-        },
+        "created_at": datetime.now().astimezone().isoformat(),
+        "git": dict(git_state),
         "config": {
             "data_path": str(data_path),
             "attack_type": args.attack_type,
@@ -308,6 +321,9 @@ def main() -> None:
     if not data_path.exists():
         raise FileNotFoundError(data_path)
 
+    # Record repository state before creating/updating any run artifacts.
+    git_state = _capture_git_state()
+
     run_dir = Path(args.run_dir) if args.run_dir else Path(args.out_root) / _run_name(args.seed, args.attack_type)
 
     if args.reuse_prepared:
@@ -349,7 +365,7 @@ def main() -> None:
         preprocessing_state = prepared.preprocessing_state
         manifest = prepared.preprocessing_manifest
 
-    run_meta = _build_run_meta(args, run_dir, data_path, manifest)
+    run_meta = _build_run_meta(args, run_dir, data_path, manifest, git_state)
     _write_json(run_dir / "run_meta.json", run_meta)
 
     print("\n=== Preprocessing audit ===")
