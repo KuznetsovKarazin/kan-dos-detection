@@ -1,0 +1,53 @@
+{
+  "run_dir": "experiment_data\\runs\\NCA_R1_CICIDS2017_DoS_Hulk_seed42",
+  "created_at": "2026-08-14T19:11:28.569840+02:00",
+  "git": {
+    "commit": "fb4fe662dd40867c9f9e4f841ed4f70ddbb706ef",
+    "branch": "fix/ncaa-r1-leakage-free",
+    "dirty": false,
+    "status_porcelain": []
+  },
+  "config": {
+    "data_path": "data\\Wednesday-workingHours.pcap_ISCX.csv",
+    "attack_type": "DoS Hulk",
+    "max_samples_per_class": 231073,
+    "test_size": 0.2,
+    "seed": 42,
+    "epochs": 200,
+    "lr": 0.001,
+    "width": [
+      78,
+      32,
+      16,
+      1
+    ],
+    "grid": 5,
+    "k": 3,
+    "threshold": 0.5,
+    "preprocessing": "train-fit median -> 3xIQR clipping -> StandardScaler"
+  },
+  "dataset": {
+    "sha256": "893c27dc968bf7a8adef1689f90be55ca4a4dc3088fb63d6ff247ac56856df2a",
+    "selected_total": 462146,
+    "train_total": 369716,
+    "test_total": 92430,
+    "feature_count": 78
+  },
+  "environment": {
+    "python": "3.11.8",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "torch": "2.6.0+cpu",
+    "numpy": "1.26.4",
+    "pandas": "2.2.2",
+    "scikit_learn": "1.4.1.post1",
+    "pykan": {
+      "version": "0.2.8",
+      "direct_url": "https://github.com/KindXiaoming/pykan.git",
+      "vcs_info": {
+        "commit_id": "ecde4ec3274d3bef1ad737479cf126aed38ab530",
+        "vcs": "git"
+      },
+      "module_file": "E:\\kan-dos-detection\\venv\\Lib\\site-packages\\kan\\__init__.py"
+    }
+  }
+}

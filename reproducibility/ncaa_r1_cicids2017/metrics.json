@@ -1,0 +1,23 @@
+{
+  "threshold": 0.5,
+  "metrics": {
+    "accuracy": 0.9899599697068051,
+    "precision": 0.9843840246432927,
+    "recall": 0.9957156767283349,
+    "f1": 0.990017426475334,
+    "roc_auc": 0.999106256409039,
+    "pr_auc": 0.9990539629158792
+  },
+  "confusion_matrix": {
+    "tn": 45485,
+    "fp": 730,
+    "fn": 198,
+    "tp": 46017
+  },
+  "class_counts": {
+    "test_benign": 46215,
+    "test_attack": 46215
+  },
+  "run_dir": "experiment_data\\runs\\NCA_R1_CICIDS2017_DoS_Hulk_seed42",
+  "timestamp": "2026-08-14T22:15:14.926355"
+}
